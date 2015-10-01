@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding=utf-8
 
 """Nagios plugin to check the YUM package management system for package updates. Can optionally alert on any available updates as well as just security related updates."""
