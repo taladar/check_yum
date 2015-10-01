@@ -27,7 +27,7 @@ DEFAULT_TIMEOUT = 55
 YUM = "/usr/bin/yum"
 
 
-def end(status, message, perfdata=""):
+def nagios_output_formatter(status, message, perfdata=""):
     """Exits the plugin with first arg as the return code and the second arg as the message to output."""
 
     if perfdata:
@@ -49,11 +49,11 @@ def check_yum_usable():
     """Checks that the YUM program and path are correct and usable - that the program exists and is executable, otherwise exits with error."""
 
     if not os.path.exists(YUM):
-        end(UNKNOWN, "%s cannot be found" % YUM)
+        nagios_output_formatter(UNKNOWN, "%s cannot be found" % YUM)
     elif not os.path.isfile(YUM):
-        end(UNKNOWN, "%s is not a file" % YUM)
+        nagios_output_formatter(UNKNOWN, "%s is not a file" % YUM)
     elif not os.access(YUM, os.X_OK):
-        end(UNKNOWN, "%s is not executable" % YUM)
+        nagios_output_formatter(UNKNOWN, "%s is not executable" % YUM)
 
 
 class YumTester:
@@ -82,11 +82,12 @@ class YumTester:
         try:
             self.timeout = int(self.timeout)
         except ValueError:
-            end(UNKNOWN,
-                "Timeout must be an whole number, representing the timeout in seconds")
+            nagios_output_formatter(UNKNOWN,
+                                    "Timeout must be an whole number, representing the timeout in seconds")
 
         if self.timeout < 1 or self.timeout > 3600:
-            end(UNKNOWN, "Timeout must be a number between 1 and 3600 seconds")
+            nagios_output_formatter(
+                UNKNOWN, "Timeout must be a number between 1 and 3600 seconds")
 
         if self.verbosity is None:
             self.verbosity = 0
@@ -95,15 +96,15 @@ class YumTester:
             if self.verbosity < 0:
                 raise ValueError
         except ValueError:
-            end(UNKNOWN,
-                "Invalid verbosity type, must be positive numeric integer")
+            nagios_output_formatter(UNKNOWN,
+                                    "Invalid verbosity type, must be positive numeric integer")
 
     def run(self, cmd):
         """Runs a system command and returns an array of lines of the output."""
 
         if cmd is "" or None:
-            end(UNKNOWN,
-                "Internal python error - no cmd supplied for run function")
+            nagios_output_formatter(UNKNOWN,
+                                    "Internal python error - no cmd supplied for run function")
 
         if self.installroot:
             cmd += " --installroot=%s" % self.installroot
@@ -125,16 +126,18 @@ class YumTester:
         except OSError, error:
             error = str(error)
             if error == "No such file or directory":
-                end(UNKNOWN, "Cannot find utility '%s'" % cmd.split()[0])
-            end(UNKNOWN, "Error trying to run utility '%s' - %s" %
-                (cmd.split()[0], error))
+                nagios_output_formatter(
+                    UNKNOWN, "Cannot find utility '%s'" % cmd.split()[0])
+            nagios_output_formatter(UNKNOWN, "Error trying to run utility '%s' - %s" %
+                                    (cmd.split()[0], error))
 
         output = process.communicate()
         returncode = process.returncode
         stdout = output[0]
 
         if stdout is None or "":
-            end(UNKNOWN, "No output from utility '%s'" % cmd.split()[0])
+            nagios_output_formatter(
+                UNKNOWN, "No output from utility '%s'" % cmd.split()[0])
 
         self.vprint(3, "Returncode: '%s'\nOutput: '%s'" % (returncode, stdout))
         output = str(stdout).split("\n")
@@ -154,19 +157,20 @@ class YumTester:
             if "lock" in output[-2] or "another copy is running" in output[-2]:
                 msg = "Cannot check for updates, another instance of YUM is running"
                 if self.no_warn_on_lock:
-                    end(OK, msg)
+                    nagios_output_formatter(OK, msg)
                 else:
-                    end(WARNING, msg)
+                    nagios_output_formatter(WARNING, msg)
             else:
                 output = self.strip_output(output)
-                end(UNKNOWN, "%s" % output)
+                nagios_output_formatter(UNKNOWN, "%s" % output)
         else:
             if 'Loading "security" plugin' not in output or "Command line error: no such option: --security" in output:
-                end(UNKNOWN,
-                    "Security plugin for YUM is required. Try to 'yum install yum-security' and then re-run this plugin. Alternatively, to just alert on any update which does not require the security plugin, try --all-updates")
+                nagios_output_formatter(UNKNOWN,
+                                        "Security plugin for YUM is required. Try to 'yum install yum-security' and then re-run this plugin. Alternatively, to just alert \
+                                        on any update which does not require the security plugin, try --all-updates")
             else:
                 output = self.strip_output(output)
-                end(UNKNOWN, "%s" % output)
+                nagios_output_formatter(UNKNOWN, "%s" % output)
 
     def strip_output(self, output):
         """Cleans up the output from the plugin and returns it. Takes and returns an array of the lines of output and returns a single string."""
@@ -193,8 +197,8 @@ class YumTester:
     def timeout_signal_handler(self, signum, frame):
         """Function to be called by signal.alarm to kill the plugin."""
 
-        end(UNKNOWN, "YUM nagios plugin has self terminated after exceeding the timeout (%s seconds)" %
-            self.timeout)
+        nagios_output_formatter(UNKNOWN, "YUM nagios plugin has self terminated after exceeding the timeout (%s seconds)" %
+                                self.timeout)
 
     def get_updates(self):
         """Checks for updates and returns a tuple containing the number of security updates and the number of total updates."""
@@ -221,8 +225,9 @@ class YumTester:
             for section in output2:
                 print "\nSection:\n%s\n" % section
         if len(output2) > 2 or not ("Setting up repositories" in output2[0] or "Loaded plugins: " in output2[0] or re.search('Loading\s+".+"\s+plugin', output2[0])):
-            end(WARNING,
-                "YUM output signature does not match current known format. Please make sure you have upgraded to the latest version of this plugin. If the problem persists, please contact the author for a fix")
+            nagios_output_formatter(WARNING,
+                                    "YUM output signature does not match current known format. Please make sure you have upgraded to the latest \
+                                    version of this plugin. If the problem persists, please contact the author for a fix")
         if len(output2) == 1:
             # There are no updates but we have passed the loading and setting
             # up of repositories
@@ -236,8 +241,9 @@ class YumTester:
             if number_packages < 0:
                 raise ValueError
         except ValueError:
-            end(UNKNOWN,
-                "Error parsing package information, invalid package number, YUM output may have changed. Please make sure you have upgraded to the latest version of this plugin. If the problem persists, then please contact the author for a fix")
+            nagios_output_formatter(UNKNOWN,
+                                    "Error parsing package information, invalid package number, YUM output may have changed. Please make sure you have \
+                                    upgraded to the latest version of this plugin. If the problem persists, then please contact the author for a fix")
 
         # Extra layer of checks. This is a security plugin so it's preferable
         # to fail on error rather than pass silently leaving you with an
@@ -251,8 +257,9 @@ class YumTester:
             if re_package_format.match(line):
                 count += 1
         if count != number_packages:
-            end(UNKNOWN,
-                "Error parsing package information, inconsistent package count, YUM output may have changed. Please make sure you have upgraded to the latest version of this plugin. If the problem persists, then please contact the author for a fix")
+            nagios_output_formatter(UNKNOWN,
+                                    "Error parsing package information, inconsistent package count, YUM output may have changed. Please make sure you have \
+                                    upgraded to the latest version of this plugin. If the problem persists, then please contact the author for a fix")
 
         return number_packages
 
@@ -295,21 +302,24 @@ class YumTester:
                 break
 
         if not summary_line_found:
-            end(WARNING,
-                "Cannot find summary line in YUM output. Please make sure you have upgraded to the latest version of this plugin. If the problem persists, please contact the author for a fix")
+            nagios_output_formatter(WARNING,
+                                    "Cannot find summary line in YUM output.Please make sure you have upgraded to the latest version of this plugin. \
+                                    If the problem persists, please contact the author for a fix")
 
         try:
             number_security_updates = int(number_security_updates)
             number_total_updates = int(number_total_updates)
         except ValueError:
-            end(WARNING,
-                "Error parsing package information, YUM output may have changed. Please make sure you have upgraded to the latest version of this plugin. If the problem persists, the please contact the author for a fix")
+            nagios_output_formatter(WARNING,
+                                    "Error parsing package information, YUM output may have changed. Please make sure you have upgraded to the latest \
+                                    version of this plugin. If the problem persists, the please contact the author for a fix")
 
         number_other_updates = number_total_updates - number_security_updates
 
         if len(output) > number_total_updates + 25:
-            end(WARNING,
-                "YUM output signature is larger than current known format, please make sure you have upgraded to the latest version of this plugin. If the problem persists, please contact the author for a fix")
+            nagios_output_formatter(WARNING,
+                                    "YUM output signature is larger than current known format, please make sure you have upgraded to the latest version \
+                                    of this plugin. If the problem persists, please contact the author for a fix")
 
         return number_security_updates, number_other_updates
 
@@ -399,35 +409,45 @@ def main():
     parser.add_option("--all-updates",
                       action="store_true",
                       dest="all_updates",
-                      help="Does not distinguish between security and non-security updates, but returns critical for any available update. This may be used if the YUM security plugin is absent or you want to maintain every single package at the latest version. You may want to use --warn-on-any-update instead of this option.")
+                      help="Does not distinguish between security and non-security updates, but returns critical for any available update. This may be used \
+                      if the YUM security plugin is absent or you want to maintain every single package at the latest version. \
+                      You may want to use --warn-on-any-update instead of this option.")
 
     parser.add_option("--warn-on-any-update",
                       action="store_true",
                       dest="warn_on_any_update",
-                      help="Warns if there are any (non-security) package updates available. By default only warns when security related updates are available. If --all-updates is used, then this option is redundant as --all-updates will return a critical result on any available update, whereas using this switch still allows you to differentiate between the severity of updates.")
+                      help="Warns if there are any (non-security) package updates available. By default only warns when security related updates are available. \
+                      If --all-updates is used, then this option is redundant as --all-updates will return a critical result on any available update, \
+                      whereas using this switch still allows you to differentiate between the severity of updates.")
 
     parser.add_option("-C", "--cache-only",
                       action="store_true",
                       dest="no_cache_update",
-                      help="Run entirely from cache and do not update the cache when running YUM. Useful if you have 'yum makecache' cronned so that the nagios check itself doesn't have to do it, possibly speeding up execution (by 1-2 seconds in tests).")
+                      help="Run entirely from cache and do not update the cache when running YUM. Useful if you have 'yum makecache' cronned so that \
+                      the nagios check itself doesn't have to do it, possibly speeding up execution (by 1-2 seconds in tests).")
 
     parser.add_option("--no-warn-on-lock",
                       action="store_true",
                       dest="no_warn_on_lock",
-                      help="Return OK instead of WARNING when YUM is locked and fails to check for updates due to another instance running. This is not recommended from the security standpoint, but may be wanted to reduce the number of alerts that may intermittently pop up when someone is running YUM interactively for package management.")
+                      help="Return OK instead of WARNING when YUM is locked and fails to check for updates due to another instance running. \
+                      This is not recommnagios_output_formattered from the security standpoint, but may be wanted to reduce the number of alerts that \
+                      may intermittently pop up when someone is running YUM interactively for package management.")
 
     parser.add_option("--no-warn-on-updates",
                       action="store_true",
                       dest="no_warn_on_updates",
-                      help="Return OK instead of WARNING even when updates are available. This is not recommended from the security standpoint, but may be wanted to disable alerts while the plugin output still shows the number of available updates.")
+                      help="Return OK instead of WARNING even when updates are available. This is not recommnagios_output_formattered from the \
+                      security standpoint, but may be wanted to disable alerts while the plugin output still shows the number of available updates.")
 
     parser.add_option("--enablerepo",
                       dest="repository_to_enable",
-                      help="Explicitly enables a reposity when calling YUM. Can take a comma separated list of repositories. Note that enabling repositories can lead to unexpected results, for example when protected repositories are enabled.")
+                      help="Explicitly enables a reposity when calling YUM. Can take a comma separated list of repositories. Note that enabling \
+                      repositories can lead to unexpected results, for example when protected repositories are enabled.")
 
     parser.add_option("--disablerepo",
                       dest="repository_to_disable",
-                      help="Explicitly disables a repository when calling YUM. Can take a comma separated list of repositories. Note that disabling repositories can lead to unexpected results, for example when protected repositories are disabled.")
+                      help="Explicitly disables a repository when calling YUM. Can take a comma separated list of repositories. Note that disabling \
+                      repositories can lead to unexpected results, for example when protected repositories are disabled.")
 
     parser.add_option("--installroot",
                       dest="installroot",
@@ -440,7 +460,8 @@ def main():
     parser.add_option("-v", "--verbose",
                       action="count",
                       dest="verbosity",
-                      help="Verbose mode. Can be used multiple times to increase output. Use -vvv for debugging output. By default only one result line is printed as per Nagios standards.")
+                      help="Verbose mode. Can be used multiple times to increase output. Use -vvv for debugging output. By default only one result \
+                      line is printed as per Nagios standards.")
 
     parser.add_option("-V", "--version",
                       action="store_true",
@@ -450,7 +471,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if args:
-        end(UNKNOWN, "Invalid arguments specified.")
+        nagios_output_formatter(UNKNOWN, "Invalid arguments specified.")
 
     tester.all_updates = options.all_updates
     tester.no_cache_update = options.no_cache_update
@@ -468,7 +489,7 @@ def main():
         sys.exit(OK)
 
     result, output = tester.test_yum_updates()
-    end(result, output)
+    nagios_output_formatter(result, output)
 
 
 if __name__ == "__main__":
@@ -477,7 +498,8 @@ if __name__ == "__main__":
     except SystemExit:
         raise
     except:
-        end(UNKNOWN, "check_yum failed for unknown reasons.")
+        nagios_output_formatter(
+            UNKNOWN, "check_yum failed for unknown reasons.")
 
 # Copyright © ?–?, Hari Sekhon <harisekhon@gmail.com>.
 # Copyright © 2012–2014, Christoph Anton Mitterer <mail@christoph.anton.mitterer.name>.
