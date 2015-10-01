@@ -3,7 +3,6 @@
 
 """Nagios plugin to check the YUM package management system for package updates. Can optionally alert on any available updates as well as just security related updates."""
 
-import os
 import re
 import sys
 import signal
@@ -48,12 +47,11 @@ def nagios_output_formatter(status, message, perfdata=""):
 def check_yum_usable():
     """Checks that the YUM program and path are correct and usable - that the program exists and is executable, otherwise exits with error."""
 
-    if not os.path.exists(YUM):
-        nagios_output_formatter(UNKNOWN, "%s cannot be found" % YUM)
-    elif not os.path.isfile(YUM):
-        nagios_output_formatter(UNKNOWN, "%s is not a file" % YUM)
-    elif not os.access(YUM, os.X_OK):
-        nagios_output_formatter(UNKNOWN, "%s is not executable" % YUM)
+try:
+    import yum
+    # print yum.sys.version
+except ImportError:
+    ("could not import yum")
 
 
 class YumTester:
