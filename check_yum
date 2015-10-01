@@ -46,12 +46,11 @@ def nagios_output_formatter(status, message, perfdata=""):
 
 def check_yum_usable():
     """Checks that the YUM program and path are correct and usable - that the program exists and is executable, otherwise exits with error."""
-
+sys.tracebacklimit = 0
 try:
     import yum
-    # print yum.sys.version
 except ImportError:
-    ("could not import yum")
+    raise ImportError('Cannot import yum')
 
 
 class YumTester:
@@ -99,7 +98,7 @@ class YumTester:
 
     def run(self, cmd):
         """Runs a system command and returns an array of lines of the output."""
-
+        check_yum_usable()
         if cmd is "" or None:
             nagios_output_formatter(UNKNOWN,
                                     "Internal python error - no cmd supplied for run function")
