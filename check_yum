@@ -275,7 +275,10 @@ class YumTester:
             "No packages needed, for security, \d+ available")
         re_no_security_updates_available_rhel6 = re.compile(
             "No packages needed for security; \d+ packages available")
+        re_broken_update_notice = re.compile(
+            "An update notice is broken, or duplicate, skipping")
         summary_line_found = False
+        number_broken_update_notices = 0
         for line in output:
             if re_no_security_updates_available_rhel5.match(line):
                 summary_line_found = True
@@ -297,6 +300,8 @@ class YumTester:
                 number_security_updates = line.split()[0]
                 number_total_updates = line.split()[7]
                 break
+            if re_broken_update_notice.match(line):
+                number_broken_update_notices += 1
 
         if not summary_line_found:
             nagios_output_formatter(WARNING,
@@ -313,7 +318,7 @@ class YumTester:
 
         number_other_updates = number_total_updates - number_security_updates
 
-        if len(output) > number_total_updates + 25:
+        if len(output) > number_total_updates + 25 + number_broken_update_notices:
             nagios_output_formatter(WARNING,
                                     "YUM output signature is larger than current known format, please make sure you have upgraded to the latest version \
                                     of this plugin. If the problem persists, please contact the author for a fix")
